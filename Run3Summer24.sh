@@ -106,6 +106,15 @@ cmsDriver.py  \
 cmsRun --numThreads ${NUMTHREADS} Run3Summer24DRPremix-00048_2_cfg.py || exit $? ;
 
 source_cmssw CMSSW_15_0_2 el8_amd64_gcc12
+# fix reweighting issue in cmssw
+cd $CMSSW_BASE/src
+git-cms-addpkg PhysicsTools/NanoAOD
+wget http://uaf-4.t2.ucsd.edu/~legianni/forAashay/patch_CMSSW_15_0_2
+git apply patch_CMSSW_15_0_2
+rm patch_CMSSW_15_0_2
+scram b -j 4
+cd ../..
+
 cmsDriver.py  \
   --python_filename Run3Summer24MiniAODv6-00091_1_cfg.py \
   --eventcontent MINIAODSIM1 \
