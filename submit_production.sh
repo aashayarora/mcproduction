@@ -1,11 +1,7 @@
 #!/bin/bash
 
-# Script to create and submit condor jobs for Monte Carlo production
-# Usage: ./submit_production.sh <year> <sample_name> <gridpack_path> [options]
-
 set -e
 
-# Function to display usage
 usage() {
     echo "Usage: $0 <year> <sample_name> <gridpack_path> [options]"
     echo ""
@@ -27,16 +23,13 @@ usage() {
     echo "  $0 Run3Summer24 VBSWWH_OSWW_C2V1p5_5f_LO /eos/user/a/aaarora/gridpacks/sample.tar.xz"
 }
 
-# Default values
-EVENTS=3000
+EVENTS=2000
 CPUS=8
 MEMORY="8 GB"
-QUEUE_SIZE=50
+QUEUE_SIZE=75
 JOB_FLAVOUR="nextweek"
 DRY_RUN=false
 
-# Parse command line arguments
-if [ $# -lt 3 ]; then
     echo "Error: Missing required arguments"
     usage
     exit 1
@@ -47,7 +40,6 @@ SAMPLE_NAME=$2
 GRIDPACK_PATH=$3
 shift 3
 
-# Parse optional arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         -n|--events)
@@ -86,45 +78,21 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate inputs
 if [ ! -f "${GRIDPACK_PATH}" ]; then
     echo "Error: Gridpack file not found: ${GRIDPACK_PATH}"
     exit 1
 fi
 
-# Create year directory if it doesn't exist
-YEAR_DIR="/afs/cern.ch/work/a/aaarora/production/${YEAR}"
-if [ ! -d "${YEAR_DIR}" ]; then
-    echo "Creating directory: ${YEAR_DIR}"
-    mkdir -p "${YEAR_DIR}"
-fi
-
-# Create logs directory
-LOGS_DIR="${YEAR_DIR}/logs"
-if [ ! -d "${LOGS_DIR}" ]; then
-    echo "Creating logs directory: ${LOGS_DIR}"
-    mkdir -p "${LOGS_DIR}"
-fi
-
-# Determine the executable script
 EXECUTABLE="${YEAR}.sh"
-if [ ! -f "${YEAR_DIR}/${EXECUTABLE}" ]; then
-    # Copy from the main directory if it exists there
-    if [ -f "/afs/cern.ch/work/a/aaarora/production/${EXECUTABLE}" ]; then
-        echo "Copying ${EXECUTABLE} to ${YEAR_DIR}/"
-        cp "/afs/cern.ch/work/a/aaarora/production/${EXECUTABLE}" "${YEAR_DIR}/"
-    else
-        echo "Error: Executable script ${EXECUTABLE} not found"
-        exit 1
-    fi
+if [ ! -f "${EXECUTABLE}" ]; then
+    echo "Error: Executable script not found: ${EXECUTABLE}"
+    exit 1
 fi
 
-# Generate submit file name
 SUBMIT_FILE="submit_${YEAR}_${SAMPLE_NAME}.jdl"
 
 echo "Creating condor submit file: ${SUBMIT_FILE}"
 
-# Create the condor submit file
 cat > "${SUBMIT_FILE}" << EOF
 executable              = ${EXECUTABLE}
 
@@ -162,29 +130,24 @@ echo "  Queue size:    ${QUEUE_SIZE}"
 echo "  Job flavour:   ${JOB_FLAVOUR}"
 echo ""
 
-# Submit the job unless dry run
 if [ "$DRY_RUN" = true ]; then
     echo "Dry run mode - submit file created but not submitted"
     echo "To submit manually, run:"
     echo "  condor_submit submit_${YEAR}_${SAMPLE_NAME}.jdl"
 else
     echo "Submitting job to condor..."
-    # Check if condor_submit is available
     if ! command -v condor_submit &> /dev/null; then
         echo "Error: condor_submit command not found"
         echo "Please ensure HTCondor is properly installed and configured"
         exit 1
     fi
     
-    # Submit the job
     SUBMIT_OUTPUT=$(condor_submit "submit_${YEAR}_${SAMPLE_NAME}.jdl")
     echo "${SUBMIT_OUTPUT}"
     
-    # delete the submit file after submission if not in dry run mode
     if [ -f "${SUBMIT_FILE}" ]; then
         rm "${SUBMIT_FILE}"
     fi
-    # Extract cluster ID if possible
     CLUSTER_ID=$(echo "${SUBMIT_OUTPUT}" | grep -oP 'submitted to cluster \K\d+' || echo "unknown")
     
     echo ""

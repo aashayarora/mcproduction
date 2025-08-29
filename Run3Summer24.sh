@@ -112,7 +112,7 @@ git-cms-addpkg PhysicsTools/NanoAOD
 wget http://uaf-4.t2.ucsd.edu/~legianni/forAashay/patch_CMSSW_15_0_2
 git apply patch_CMSSW_15_0_2
 rm patch_CMSSW_15_0_2
-scram b -j 4
+scram b -j ${NUMTHREADS}
 cd ../..
 
 cmsDriver.py  \
